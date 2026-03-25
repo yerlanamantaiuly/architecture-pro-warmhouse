@@ -1,0 +1,105 @@
+name: Build And Deploy WarmHouse
+
+on:
+  push:
+    branches:
+      - main
+      - warmhouse
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  SMART_HOME_IMAGE: ghcr.io/${{ github.repository_owner }}/warmhouse-smart-home
+  TEMPERATURE_API_IMAGE: ghcr.io/${{ github.repository_owner }}/warmhouse-temperature-api
+
+jobs:
+  build-images:
+    name: Build And Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: smart-home
+            image: ghcr.io/${{ github.repository_owner }}/warmhouse-smart-home
+            context: ./apps/smart_home
+            dockerfile: ./apps/smart_home/Dockerfile
+          - name: temperature-api
+            image: ghcr.io/${{ github.repository_owner }}/warmhouse-temperature-api
+            context: ./apps/temperature_api
+            dockerfile: ./apps/temperature_api/Dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: |
+            ${{ matrix.service.image }}:${{ github.sha }}
+            ${{ matrix.service.image }}:${{ github.ref_name }}
+
+  deploy-to-vps:
+    name: Deploy To VPS
+    needs: build-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy deployment files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "deploy/compose/docker-compose.prod.yml,deploy/postgres/init.sql"
+          target: ${{ secrets.VPS_APP_DIR }}
+          strip_components: 1
+
+      - name: Deploy stack on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ github.sha }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: GHCR_USERNAME,GHCR_PULL_TOKEN,GHCR_OWNER,IMAGE_TAG,VPS_APP_DIR
+          script: |
+            set -e
+            mkdir -p "$VPS_APP_DIR/compose" "$VPS_APP_DIR/postgres"
+            echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            cd "$VPS_APP_DIR/compose"
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml pull
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
+
+      - name: Run smoke checks
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          APP_REDIRECT_DOMAIN: ${{ secrets.APP_REDIRECT_DOMAIN }}
+        run: bash ./deploy/scripts/smoke-check.sh
