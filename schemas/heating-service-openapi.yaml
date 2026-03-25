@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: Heating Service API
+  version: 1.0.0
+  description: Minimal contract for heating control in the MVP architecture.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/heating
+paths:
+  /homes/{homeId}/state:
+    get:
+      summary: Get current heating state for a home
+      parameters:
+        - in: path
+          name: homeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Heating state returned
+  /homes/{homeId}/commands:
+    post:
+      summary: Send heating command
+      parameters:
+        - in: path
+          name: homeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: set_target_temperature
+                value:
+                  type: number
+                  format: double
+      responses:
+        '202':
+          description: Heating command accepted

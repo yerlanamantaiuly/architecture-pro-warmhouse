@@ -1,0 +1,59 @@
+@startuml WarmHouseToBeContainers
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title WarmHouse To-Be Container Diagram
+
+Person(user, "Пользователь", "Управляет модулями умного дома, просматривает телеметрию и настраивает сценарии")
+Person(installer, "Специалист поддержки", "Помогает с миграцией и диагностикой legacy-компонентов")
+
+System_Ext(tempApi, "Temperature API / Sensor Gateway", "Внешний источник температурных данных и адаптер к датчикам")
+System_Ext(partnerDevices, "Партнерские устройства", "Датчики, реле, камеры, ворота и другие внешние устройства")
+
+System_Boundary(warmhouse, "WarmHouse Platform") {
+    Container(gateway, "API Gateway", "Nginx / BFF", "Единая точка входа для веб- и мобильных клиентов")
+    Container(monolith, "WarmHouse Monolith [Legacy]", "Go, Gin", "Сохраняет функции пользователей, домов и не перенесенную бизнес-логику во время миграции")
+    Container(deviceRegistry, "Device Registry Service", "Java / Spring Boot", "Регистрирует устройства, связывает их с домами и комнатами, хранит конфигурацию")
+    Container(telemetry, "Telemetry Service", "Python / FastAPI", "Получает и нормализует телеметрию, отдает актуальные значения и историю")
+    Container(heating, "Heating Service", "C# / ASP.NET Core", "Управляет сценариями отопления и командами для отопительных модулей")
+    Container(lighting, "Lighting Service", "C# / ASP.NET Core", "Управляет сценариями освещения")
+    Container(gates, "Gate Service", "Java / Spring Boot", "Управляет воротами и контролирует их состояние")
+    Container(surveillance, "Surveillance Service", "Node.js / NestJS", "Отдает статусы камер и события наблюдения")
+
+    ContainerDb(legacyDb, "Legacy PostgreSQL", "PostgreSQL", "Общая БД монолита во время переходного периода")
+    ContainerDb(deviceDb, "Device Store", "PostgreSQL", "Реестр устройств и их конфигурация")
+    ContainerDb(telemetryDb, "Telemetry Store", "PostgreSQL / Timeseries", "Последние значения телеметрии и история показаний")
+}
+
+Rel(user, gateway, "Работает с платформой", "HTTPS/JSON")
+Rel(installer, gateway, "Диагностика и поддержка", "HTTPS/JSON")
+
+Rel(gateway, monolith, "Проксирует legacy-сценарии", "HTTPS/JSON")
+Rel(gateway, deviceRegistry, "Проксирует работу с устройствами", "HTTPS/JSON")
+Rel(gateway, telemetry, "Запрашивает телеметрию", "HTTPS/JSON")
+Rel(gateway, heating, "Проксирует команды отопления", "HTTPS/JSON")
+Rel(gateway, lighting, "Проксирует команды освещения", "HTTPS/JSON")
+Rel(gateway, gates, "Проксирует команды ворот", "HTTPS/JSON")
+Rel(gateway, surveillance, "Проксирует функции наблюдения", "HTTPS/JSON")
+
+Rel(monolith, legacyDb, "Читает и пишет legacy-данные", "SQL")
+Rel(monolith, deviceRegistry, "Постепенно выносит управление устройствами", "HTTPS/JSON")
+Rel(monolith, telemetry, "Получает актуальные данные вместо прямого вызова датчиков", "HTTPS/JSON")
+Rel(monolith, heating, "Передает управление отоплением", "HTTPS/JSON")
+
+Rel(deviceRegistry, deviceDb, "Хранит устройства и конфигурацию", "SQL")
+Rel(deviceRegistry, partnerDevices, "Регистрирует и активирует устройства", "HTTPS/MQTT")
+
+Rel(telemetry, telemetryDb, "Хранит последние значения и историю", "SQL")
+Rel(telemetry, tempApi, "Получает температуру и телеметрию", "HTTPS/JSON")
+Rel(telemetry, partnerDevices, "Собирает телеметрию", "HTTPS/MQTT")
+
+Rel(heating, partnerDevices, "Отправляет команды отоплению", "HTTPS/MQTT")
+Rel(lighting, partnerDevices, "Отправляет команды освещению", "HTTPS/MQTT")
+Rel(gates, partnerDevices, "Отправляет команды воротам", "HTTPS/MQTT")
+Rel(surveillance, partnerDevices, "Получает события камер", "HTTPS/RTSP")
+
+SHOW_LEGEND()
+
+@enduml

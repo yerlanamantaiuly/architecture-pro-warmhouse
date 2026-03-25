@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - warmhouse-network
+
+  temperature-api:
+    image: ghcr.io/${GHCR_OWNER}/warmhouse-temperature-api:${IMAGE_TAG}
+    environment:
+      PORT: 8081
+      TEMPERATURE_DELAY_MS: ${TEMPERATURE_DELAY_MS}
+      TEMPERATURE_FAILURE_RATE: ${TEMPERATURE_FAILURE_RATE}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - warmhouse-network
+
+  app:
+    image: ghcr.io/${GHCR_OWNER}/warmhouse-smart-home:${IMAGE_TAG}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temperature-api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${APP_DATABASE_NAME}
+      TEMPERATURE_API_URL: http://temperature-api:8081
+      PORT: :8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    networks:
+      - warmhouse-network
+
+volumes:
+  postgres_data:
+
+networks:
+  warmhouse-network:
+    driver: bridge

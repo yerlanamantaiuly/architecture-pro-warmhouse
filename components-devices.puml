@@ -1,0 +1,32 @@
+@startuml WarmHouseDeviceComponents
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title Device Registry Service Component Diagram
+
+Container(monolith, "WarmHouse Monolith [Legacy]", "Go, Gin", "Legacy-клиент новых сервисов во время миграции")
+System_Ext(partnerDevices, "Partner Devices", "Внешние датчики, реле и исполнительные устройства")
+ContainerDb(deviceDb, "Device Store", "PostgreSQL", "Реестр устройств и конфигураций")
+
+Container_Boundary(deviceService, "Device Registry Service") {
+    Component(api, "Device API", "Spring REST controllers", "Предоставляет операции регистрации, поиска и изменения устройств")
+    Component(registry, "Device Registry Application Service", "Application layer", "Управляет жизненным циклом устройств")
+    Component(binding, "Home Binding Component", "Domain component", "Привязывает устройства к дому, комнате и пользователю")
+    Component(commandPolicy, "Command Policy", "Domain rules", "Определяет, каким сервисам и устройствам доступно управление")
+    Component(deviceAdapter, "Partner Device Adapter", "Integration adapter", "Подключает внешние устройства по стандартным протоколам")
+    Component(repository, "Device Repository", "Repository", "Хранит устройства, типы, статусы и конфигурации")
+}
+
+Rel(monolith, api, "Создает и запрашивает устройства", "HTTPS/JSON")
+Rel(api, registry, "Вызывает", "in-process")
+Rel(registry, binding, "Назначает устройство дому и комнате", "in-process")
+Rel(registry, commandPolicy, "Проверяет правила управления", "in-process")
+Rel(registry, repository, "Читает и пишет устройства", "in-process")
+Rel(registry, deviceAdapter, "Активирует устройство и читает статус", "in-process")
+Rel(deviceAdapter, partnerDevices, "Подключает и опрашивает", "HTTPS/MQTT")
+Rel(repository, deviceDb, "Читает и пишет", "SQL")
+
+SHOW_LEGEND()
+
+@enduml

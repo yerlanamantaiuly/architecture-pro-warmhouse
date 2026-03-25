@@ -1,0 +1,33 @@
+@startuml WarmHouseTelemetryComponents
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title Telemetry Service Component Diagram
+
+Container(monolith, "WarmHouse Monolith [Legacy]", "Go, Gin", "Legacy-клиент новых сервисов во время миграции")
+System_Ext(tempApi, "Temperature API / Sensor Gateway", "Внешний источник телеметрии")
+ContainerDb(telemetryDb, "Telemetry Store", "PostgreSQL / Timeseries", "Последние значения и история показаний")
+
+Container_Boundary(telemetryService, "Telemetry Service") {
+    Component(api, "Telemetry API", "FastAPI controllers", "Принимает запросы на чтение телеметрии и истории")
+    Component(appService, "Telemetry Application Service", "Application layer", "Оркестрирует чтение, нормализацию и возврат телеметрии")
+    Component(adapter, "Temperature Provider Adapter", "Integration adapter", "Обращается к внешним сенсорам и provider API")
+    Component(normalizer, "Telemetry Normalizer", "Domain component", "Нормализует единицы измерения, статусы и структуру ответа")
+    Component(repository, "Telemetry Repository", "Repository", "Читает и записывает телеметрию в хранилище")
+    Component(cache, "Last Value Cache", "In-memory cache", "Держит последние показания для быстрого ответа и graceful degradation")
+}
+
+Rel(monolith, api, "Запрашивает актуальные значения", "HTTPS/JSON")
+Rel(api, appService, "Вызывает", "in-process")
+Rel(appService, cache, "Читает последние значения", "in-process")
+Rel(appService, adapter, "Запрашивает свежую телеметрию", "in-process")
+Rel(appService, normalizer, "Нормализует ответ", "in-process")
+Rel(appService, repository, "Сохраняет и читает историю", "in-process")
+Rel(adapter, tempApi, "Получает температуру", "HTTPS/JSON")
+Rel(repository, telemetryDb, "Читает и пишет", "SQL")
+Rel(normalizer, cache, "Обновляет кэш актуальным значением", "in-process")
+
+SHOW_LEGEND()
+
+@enduml

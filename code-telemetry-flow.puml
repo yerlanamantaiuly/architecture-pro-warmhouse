@@ -1,0 +1,55 @@
+@startuml TelemetryReadFlow
+title Telemetry Read Flow Code Diagram
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "Legacy Monolith" {
+  class SensorHandler {
+    +GetSensors()
+  }
+
+  class TelemetryClient {
+    +GetLatestReadings()
+  }
+}
+
+package "Telemetry Service" {
+  class TelemetryController {
+    +GetLatestTelemetry()
+  }
+
+  class TelemetryApplicationService {
+    +LoadLatestTelemetry()
+  }
+
+  class TemperatureProviderAdapter {
+    +FetchCurrentValues()
+  }
+
+  class TelemetryRepository {
+    +SaveReadings()
+    +LoadLastKnownValues()
+  }
+
+  class TelemetryNormalizer {
+    +Normalize()
+  }
+}
+
+class TemperatureAPI {
+  +GET /temperature/{sensorId}
+}
+
+database TelemetryStore
+
+SensorHandler --> TelemetryClient : requests latest readings
+TelemetryClient --> TelemetryController : HTTPS/JSON
+TelemetryController --> TelemetryApplicationService : delegates
+TelemetryApplicationService --> TemperatureProviderAdapter : fetches fresh values
+TelemetryApplicationService --> TelemetryRepository : reads fallback / stores history
+TelemetryApplicationService --> TelemetryNormalizer : normalizes readings
+TemperatureProviderAdapter --> TemperatureAPI : HTTPS call
+TelemetryRepository --> TelemetryStore : SQL
+
+@enduml

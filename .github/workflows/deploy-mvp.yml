@@ -1,0 +1,123 @@
+name: Build And Deploy WarmHouse MVP
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - warmhouse
+    paths:
+      - 'apps/mvp_device_registry/**'
+      - 'apps/mvp_telemetry/**'
+      - 'deploy/compose/docker-compose.mvp.yml'
+      - 'deploy/nginx/mvp.yerlan-amantaiuly.kz.conf'
+      - 'deploy/scripts/mvp-smoke-check.sh'
+      - '.github/workflows/deploy-mvp.yml'
+
+env:
+  REGISTRY: ghcr.io
+  MVP_DEVICE_IMAGE: ghcr.io/${{ github.repository_owner }}/warmhouse-mvp-device-registry
+  MVP_TELEMETRY_IMAGE: ghcr.io/${{ github.repository_owner }}/warmhouse-mvp-telemetry
+
+jobs:
+  build-mvp-images:
+    name: Build And Push MVP Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: mvp-device-registry
+            image: ghcr.io/${{ github.repository_owner }}/warmhouse-mvp-device-registry
+            context: ./apps/mvp_device_registry
+            dockerfile: ./apps/mvp_device_registry/Dockerfile
+          - name: mvp-telemetry
+            image: ghcr.io/${{ github.repository_owner }}/warmhouse-mvp-telemetry
+            context: ./apps/mvp_telemetry
+            dockerfile: ./apps/mvp_telemetry/Dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: |
+            ${{ matrix.service.image }}:${{ github.sha }}
+            ${{ matrix.service.image }}:${{ github.ref_name }}
+
+  deploy-mvp-to-vps:
+    name: Deploy MVP To VPS
+    needs: build-mvp-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare MVP directories on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          MVP_VPS_APP_DIR: ${{ secrets.MVP_VPS_APP_DIR }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: MVP_VPS_APP_DIR
+          script: |
+            set -e
+            mkdir -p "$MVP_VPS_APP_DIR/compose"
+
+      - name: Copy MVP deployment files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "deploy/compose/docker-compose.mvp.yml"
+          target: ${{ secrets.MVP_VPS_APP_DIR }}/compose
+          strip_components: 2
+
+      - name: Deploy MVP stack on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ github.sha }}
+          MVP_VPS_APP_DIR: ${{ secrets.MVP_VPS_APP_DIR }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: GHCR_USERNAME,GHCR_PULL_TOKEN,GHCR_OWNER,IMAGE_TAG,MVP_VPS_APP_DIR
+          script: |
+            set -e
+            echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            cd "$MVP_VPS_APP_DIR/compose"
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse-mvp -f docker-compose.mvp.yml pull
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse-mvp -f docker-compose.mvp.yml up -d --remove-orphans
+
+      - name: Run MVP smoke checks
+        env:
+          MVP_APP_DOMAIN: ${{ secrets.MVP_APP_DOMAIN }}
+        run: bash ./deploy/scripts/mvp-smoke-check.sh
