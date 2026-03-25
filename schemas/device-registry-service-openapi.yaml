@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for managing smart home devices, their locations, and configuration.
 servers:
-  - url: https://warmhouse.yerlan-amantaiuly.kz/devices
+  - url: https://mvp.yerlan-amantaiuly.kz
 paths:
   /devices:
     get:

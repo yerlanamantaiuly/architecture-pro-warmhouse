@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for reading current telemetry and telemetry history from smart home devices.
 servers:
-  - url: https://warmhouse.yerlan-amantaiuly.kz/telemetry
+  - url: https://mvp.yerlan-amantaiuly.kz
 paths:
   /devices/{deviceId}/latest:
     get:

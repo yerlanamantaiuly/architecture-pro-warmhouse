@@ -146,14 +146,27 @@ Recommended values:
 - `MVP_VPS_APP_DIR=/opt/warmhouse-mvp`
 - `MVP_APP_DOMAIN=mvp.yerlan-amantaiuly.kz`
 
-The MVP site uses:
+The MVP deployment now uses real backend services:
 
-- `apps/mvp_site/Dockerfile`
+- `apps/mvp_device_registry/Dockerfile`
+- `apps/mvp_telemetry/Dockerfile`
 - `.github/workflows/deploy-mvp.yml`
 - `deploy/compose/docker-compose.mvp.yml`
 - `deploy/nginx/mvp.yerlan-amantaiuly.kz.conf`
 
-This lets you keep the current monolith demo online while deploying a second site independently.
+Exposed MVP paths:
+
+- `GET /health`
+- `GET /devices`
+- `POST /devices`
+- `GET /devices/{deviceId}`
+- `PATCH /devices/{deviceId}`
+- `POST /devices/{deviceId}/activate`
+- `GET /telemetry/devices/{deviceId}/latest`
+- `GET /telemetry/devices/{deviceId}/history`
+- `POST /telemetry/ingest`
+
+This lets you keep the current monolith demo online while deploying a second, actually working MVP independently.
 
 When managing the MVP stand manually on the VPS, use:
 
