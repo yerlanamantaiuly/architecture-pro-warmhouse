@@ -1,0 +1,25 @@
+.DS_Store
+Thumbs.db
+
+# Editors and IDEs
+.idea/
+.vscode/
+.cursor/
+
+# Go build artifacts
+bin/
+dist/
+coverage.out
+*.test
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Local environment files
+.env
+.env.*
+
+# Logs
+*.log

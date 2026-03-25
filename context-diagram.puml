@@ -1,0 +1,23 @@
+@startuml WarmHouseSystemContext
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title WarmHouse As-Is System Context
+
+Person(user, "Пользователь", "Через веб-интерфейс включает и выключает отопление и просматривает температуру в доме")
+Person(installer, "Специалист по подключению", "Подключает оборудование и настраивает систему вручную")
+
+System(monolith, "WarmHouse Monolith", "Go-монолит. Обрабатывает запросы пользователей, управляет отоплением, хранит сведения о сенсорах и получает температуру")
+
+System_Ext(tempSensors, "Датчики температуры", "Установлены в домах и предоставляют текущие температурные значения")
+System_Ext(heatingDevices, "Модули отопления / реле", "Принимают команды включения и выключения отопления")
+
+Rel(user, monolith, "Управляет отоплением и просматривает температуру", "HTTPS/JSON")
+Rel(installer, monolith, "Подключает и настраивает оборудование", "Ручная настройка / административный доступ")
+Rel(monolith, tempSensors, "Запрашивает текущую температуру", "Синхронный запрос")
+Rel(monolith, heatingDevices, "Отправляет команды управления отоплением", "Синхронный запрос")
+
+SHOW_LEGEND()
+
+@enduml
