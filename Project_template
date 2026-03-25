@@ -208,6 +208,29 @@ Locations - название комнаты, sensorId - идентификато
 
 Ревьюер будет проверять точно так же.
 
+### Результат выполнения Задания 5
+
+Реализовано:
+
+- Добавлен отдельный сервис `temperature-api` в каталоге `apps/temperature_api`.
+- Сервис упакован в Docker и подключен в `apps/docker-compose.yml`.
+- Для `smart_home` подключен PostgreSQL со скриптом инициализации `apps/smart_home/init.sql`.
+- Проверка выполнялась через публично развернутый стенд `As-Is` на домене [warmhouse.yerlan-amantaiuly.kz](https://warmhouse.yerlan-amantaiuly.kz/health).
+
+Использованные сценарии проверки:
+
+```bash
+curl -X POST "https://warmhouse.yerlan-amantaiuly.kz/api/v1/sensors" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Living Room Temperature","type":"temperature","location":"Living Room","unit":"°C"}'
+
+curl "https://warmhouse.yerlan-amantaiuly.kz/api/v1/sensors"
+curl "https://warmhouse.yerlan-amantaiuly.kz/api/v1/sensors"
+curl "https://warmhouse.yerlan-amantaiuly.kz/api/v1/sensors"
+```
+
+Результат: при повторных запросах значения температуры изменялись, что подтверждает работу `temperature-api` и его интеграцию с монолитом.
+
 
 # **Задание 6. Разработка MVP**
 
@@ -219,3 +242,67 @@ Locations - название комнаты, sensorId - идентификато
 2. Обеспечьте взаимодействие между микросервисами и монолитом (при желании с помощью брокера сообщений), чтобы постепенно перенести функциональность из монолита в микросервисы.
 
 В результате у вас должны быть созданы Dockerfiles и docker-compose для запуска микросервисов.
+
+### Результат выполнения Задания 6
+
+Реализован отдельный MVP-стенд, развернутый параллельно с legacy-монолитом:
+
+- As-Is стенд: [warmhouse.yerlan-amantaiuly.kz](https://warmhouse.yerlan-amantaiuly.kz/health)
+- MVP стенд: [mvp.yerlan-amantaiuly.kz](https://mvp.yerlan-amantaiuly.kz/health)
+
+Реализованные новые сервисы:
+
+- `Device Registry Service` - каталог `apps/mvp_device_registry`
+- `Telemetry Service` - каталог `apps/mvp_telemetry`
+
+Инфраструктурные артефакты MVP:
+
+- Docker Compose для MVP: [`deploy/compose/docker-compose.mvp.yml`](./deploy/compose/docker-compose.mvp.yml)
+- Workflow деплоя MVP: [`.github/workflows/deploy-mvp.yml`](./.github/workflows/deploy-mvp.yml)
+- Nginx-конфиг для MVP: [`deploy/nginx/mvp.yerlan-amantaiuly.kz.conf`](./deploy/nginx/mvp.yerlan-amantaiuly.kz.conf)
+
+Что проверялось на MVP:
+
+- Доступность health endpoint'ов:
+  - `GET /health`
+  - `GET /devices/health`
+  - `GET /telemetry/health`
+- Создание устройства через `POST /devices`
+- Получение списка устройств через `GET /devices`
+- Активация устройства через `POST /devices/{deviceId}/activate`
+- Получение актуальной телеметрии через `GET /telemetry/devices/{deviceId}/latest`
+- Получение истории телеметрии через `GET /telemetry/devices/{deviceId}/history`
+
+Тестовые команды MVP:
+
+```bash
+curl "https://mvp.yerlan-amantaiuly.kz/health"
+curl "https://mvp.yerlan-amantaiuly.kz/devices/health"
+curl "https://mvp.yerlan-amantaiuly.kz/telemetry/health"
+
+curl -X POST "https://mvp.yerlan-amantaiuly.kz/devices" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "thermostat",
+    "roomId": "11111111-1111-1111-1111-111111111111",
+    "name": "MVP Living Room Thermostat",
+    "serialNumber": "thermo-001",
+    "protocol": "http"
+  }'
+
+curl "https://mvp.yerlan-amantaiuly.kz/devices"
+curl -X POST "https://mvp.yerlan-amantaiuly.kz/devices/0ac43e93-a078-4598-b24e-7c0876b6ea3d/activate"
+curl "https://mvp.yerlan-amantaiuly.kz/telemetry/devices/0ac43e93-a078-4598-b24e-7c0876b6ea3d/latest"
+curl "https://mvp.yerlan-amantaiuly.kz/telemetry/devices/0ac43e93-a078-4598-b24e-7c0876b6ea3d/history"
+```
+
+Ключевые отличия MVP от старой версии:
+
+- В старой версии устройство и телеметрия обрабатывались внутри одного монолита, а чтение температуры зависело от синхронного вызова внешнего `temperature-api`.
+- В MVP устройство и телеметрия разделены по двум независимым сервисам: `Device Registry Service` и `Telemetry Service`.
+- В старой версии актуальные показания подмешивались в ответ на лету и не были выделены в отдельный контекст. В MVP история телеметрии сохраняется отдельно и доступна через выделенный API.
+- В старой версии точка интеграции была одна - монолит. В MVP уже есть отдельный deployable контур, который можно развивать независимо от legacy-системы.
+
+Практический вывод:
+
+MVP подтвердил, что декомпозиция по доменам `Устройства` и `Телеметрия` уменьшает связанность системы и позволяет развивать новые сервисы параллельно с существующим монолитом, не ломая текущий пользовательский стенд.
