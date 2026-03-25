@@ -27,7 +27,9 @@ For your current setup:
 
 - `nginx/warmhouse.conf.example` - sample host-level `nginx` server block
 - `nginx/yerlan-amantaiuly.kz.conf` - ready-to-use config for your current domain choice
+- `nginx/mvp.yerlan-amantaiuly.kz.conf` - host-level `nginx` config for the parallel MVP site
 - `compose/docker-compose.prod.yml` - production Compose file that pulls images from GHCR
+- `compose/docker-compose.mvp.yml` - separate Compose file for the MVP site
 - `compose/.env.example` - server-side environment variables template
 - `postgres/init.sql` - PostgreSQL bootstrap schema
 
@@ -120,6 +122,32 @@ For your setup, the domain-related secrets should be:
 - `APP_REDIRECT_DOMAIN=yerlan-amantaiuly.kz`
 
 After each deployment, the workflow runs `deploy/scripts/smoke-check.sh` against both the canonical domain and the redirecting domain.
+
+## Parallel MVP deployment
+
+The repository also contains a separate MVP deployment flow so the As-Is stand is preserved:
+
+- As-Is stand: `warmhouse.yerlan-amantaiuly.kz`
+- MVP stand: `mvp.yerlan-amantaiuly.kz`
+
+Additional GitHub secrets for the MVP flow:
+
+- `MVP_VPS_APP_DIR`
+- `MVP_APP_DOMAIN`
+
+Recommended values:
+
+- `MVP_VPS_APP_DIR=/opt/warmhouse-mvp`
+- `MVP_APP_DOMAIN=mvp.yerlan-amantaiuly.kz`
+
+The MVP site uses:
+
+- `apps/mvp_site/Dockerfile`
+- `.github/workflows/deploy-mvp.yml`
+- `deploy/compose/docker-compose.mvp.yml`
+- `deploy/nginx/mvp.yerlan-amantaiuly.kz.conf`
+
+This lets you keep the current monolith demo online while deploying a second site independently.
 
 ## Recommended firewall
 

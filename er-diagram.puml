@@ -1,0 +1,118 @@
+@startuml WarmHouseERDiagram
+
+hide circle
+skinparam linetype ortho
+
+entity "users" as users {
+  *id : uuid <<PK>>
+  --
+  email : varchar
+  full_name : varchar
+  status : varchar
+  created_at : timestamptz
+}
+
+entity "homes" as homes {
+  *id : uuid <<PK>>
+  --
+  name : varchar
+  address : varchar
+  timezone : varchar
+  created_at : timestamptz
+}
+
+entity "user_home_access" as user_home_access {
+  *id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  home_id : uuid <<FK>>
+  role : varchar
+  granted_at : timestamptz
+}
+
+entity "rooms" as rooms {
+  *id : uuid <<PK>>
+  --
+  home_id : uuid <<FK>>
+  name : varchar
+  floor : integer
+  created_at : timestamptz
+}
+
+entity "device_types" as device_types {
+  *id : uuid <<PK>>
+  --
+  name : varchar
+  category : varchar
+  vendor : varchar
+  protocol : varchar
+}
+
+entity "devices" as devices {
+  *id : uuid <<PK>>
+  --
+  device_type_id : uuid <<FK>>
+  room_id : uuid <<FK>>
+  serial_number : varchar
+  name : varchar
+  status : varchar
+  is_online : boolean
+  registered_at : timestamptz
+}
+
+entity "telemetry_readings" as telemetry_readings {
+  *id : uuid <<PK>>
+  --
+  device_id : uuid <<FK>>
+  metric_name : varchar
+  metric_value : decimal
+  unit : varchar
+  source : varchar
+  recorded_at : timestamptz
+}
+
+entity "device_commands" as device_commands {
+  *id : uuid <<PK>>
+  --
+  device_id : uuid <<FK>>
+  issued_by_user_id : uuid <<FK>>
+  command_type : varchar
+  payload_json : jsonb
+  status : varchar
+  issued_at : timestamptz
+  executed_at : timestamptz
+}
+
+entity "scenarios" as scenarios {
+  *id : uuid <<PK>>
+  --
+  home_id : uuid <<FK>>
+  name : varchar
+  trigger_type : varchar
+  is_enabled : boolean
+  created_at : timestamptz
+}
+
+entity "scenario_actions" as scenario_actions {
+  *id : uuid <<PK>>
+  --
+  scenario_id : uuid <<FK>>
+  device_id : uuid <<FK>>
+  command_type : varchar
+  parameters_json : jsonb
+  execution_order : integer
+}
+
+users ||--o{ user_home_access
+homes ||--o{ user_home_access
+homes ||--o{ rooms
+rooms ||--o{ devices
+device_types ||--o{ devices
+devices ||--o{ telemetry_readings
+devices ||--o{ device_commands
+users ||--o{ device_commands
+homes ||--o{ scenarios
+scenarios ||--o{ scenario_actions
+devices ||--o{ scenario_actions
+
+@enduml

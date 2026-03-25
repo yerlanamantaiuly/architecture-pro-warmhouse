@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: Device Registry Service API
+  version: 1.0.0
+  description: API for managing smart home devices, their locations, and configuration.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/devices
+paths:
+  /devices:
+    get:
+      summary: Get all registered devices
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+    post:
+      summary: Register a new device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+      responses:
+        '201':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+  /devices/{deviceId}:
+    get:
+      summary: Get device by ID
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          description: Device not found
+    patch:
+      summary: Update device status or configuration
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Device updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+  /devices/{deviceId}/activate:
+    post:
+      summary: Activate or onboard a partner device
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Device activation started
+components:
+  schemas:
+    Device:
+      type: object
+      required:
+        - id
+        - type
+        - roomId
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          example: thermostat
+        roomId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        serialNumber:
+          type: string
+        protocol:
+          type: string
+          example: mqtt
+        status:
+          type: string
+          example: active
+        isOnline:
+          type: boolean
+    CreateDeviceRequest:
+      type: object
+      required:
+        - type
+        - roomId
+        - name
+      properties:
+        type:
+          type: string
+        roomId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        serialNumber:
+          type: string
+        protocol:
+          type: string
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        isOnline:
+          type: boolean
+        configuration:
+          type: object
+          additionalProperties: true

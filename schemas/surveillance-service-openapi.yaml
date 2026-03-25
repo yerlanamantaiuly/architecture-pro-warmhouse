@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: Surveillance Service API
+  version: 1.0.0
+  description: Minimal contract for camera status and surveillance events.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/surveillance
+paths:
+  /cameras/{deviceId}/state:
+    get:
+      summary: Get camera state
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Camera state returned
+  /events:
+    get:
+      summary: Get surveillance events
+      responses:
+        '200':
+          description: List of surveillance events
+  /events:
+    post:
+      summary: Accept an event from a camera gateway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                eventType:
+                  type: string
+                  example: motion_detected
+                occurredAt:
+                  type: string
+                  format: date-time
+      responses:
+        '202':
+          description: Event accepted

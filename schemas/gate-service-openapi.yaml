@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: Gate Service API
+  version: 1.0.0
+  description: Minimal contract for automated gate management.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/gates
+paths:
+  /gates/{deviceId}/state:
+    get:
+      summary: Get gate state
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Gate state returned
+  /gates/{deviceId}/commands:
+    post:
+      summary: Open or close a gate
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: open
+      responses:
+        '202':
+          description: Gate command accepted

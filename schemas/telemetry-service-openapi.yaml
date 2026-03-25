@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  version: 1.0.0
+  description: API for reading current telemetry and telemetry history from smart home devices.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/telemetry
+paths:
+  /devices/{deviceId}/latest:
+    get:
+      summary: Get latest telemetry for a device
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Latest telemetry value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryReading'
+        '404':
+          description: Device or telemetry not found
+  /devices/{deviceId}/history:
+    get:
+      summary: Get telemetry history for a device
+      parameters:
+        - in: path
+          name: deviceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: metric
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Telemetry history list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TelemetryReading'
+  /ingest:
+    post:
+      summary: Ingest telemetry from adapters or gateways
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryIngestRequest'
+      responses:
+        '202':
+          description: Telemetry accepted for processing
+components:
+  schemas:
+    TelemetryReading:
+      type: object
+      required:
+        - deviceId
+        - metricName
+        - metricValue
+        - recordedAt
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        metricName:
+          type: string
+          example: temperature
+        metricValue:
+          type: number
+          format: double
+        unit:
+          type: string
+          example: C
+        source:
+          type: string
+          example: temperature-api
+        recordedAt:
+          type: string
+          format: date-time
+    TelemetryIngestRequest:
+      type: object
+      required:
+        - deviceId
+        - metricName
+        - metricValue
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        metricName:
+          type: string
+        metricValue:
+          type: number
+          format: double
+        unit:
+          type: string
+        source:
+          type: string

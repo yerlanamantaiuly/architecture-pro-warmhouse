@@ -1,0 +1,46 @@
+openapi: 3.0.3
+info:
+  title: Lighting Service API
+  version: 1.0.0
+  description: Minimal contract for lighting control in the MVP architecture.
+servers:
+  - url: https://warmhouse.yerlan-amantaiuly.kz/lighting
+paths:
+  /rooms/{roomId}/state:
+    get:
+      summary: Get lighting state in a room
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lighting state returned
+  /rooms/{roomId}/commands:
+    post:
+      summary: Send lighting command
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: switch_on
+                brightness:
+                  type: integer
+      responses:
+        '202':
+          description: Lighting command accepted
