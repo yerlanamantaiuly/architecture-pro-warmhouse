@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: warmhouse-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -21,7 +20,6 @@ services:
 
   temperature-api:
     image: ghcr.io/${GHCR_OWNER}/warmhouse-temperature-api:${IMAGE_TAG}
-    container_name: warmhouse-temperature-api
     environment:
       PORT: 8081
       TEMPERATURE_DELAY_MS: ${TEMPERATURE_DELAY_MS}
@@ -38,7 +36,6 @@ services:
 
   app:
     image: ghcr.io/${GHCR_OWNER}/warmhouse-smart-home:${IMAGE_TAG}
-    container_name: warmhouse-app
     depends_on:
       postgres:
         condition: service_healthy

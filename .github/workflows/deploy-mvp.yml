@@ -100,8 +100,8 @@ jobs:
             set -e
             echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             cd "$MVP_VPS_APP_DIR/compose"
-            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -f docker-compose.mvp.yml pull
-            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -f docker-compose.mvp.yml up -d --remove-orphans
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse-mvp -f docker-compose.mvp.yml pull
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse-mvp -f docker-compose.mvp.yml up -d --remove-orphans
 
       - name: Run MVP smoke checks
         env:

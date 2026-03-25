@@ -102,6 +102,12 @@ TEMPERATURE_FAILURE_RATE=0
 
 The sample production Compose maps the monolith to `127.0.0.1:8080` and keeps PostgreSQL and `temperature-api` internal-only, so `nginx` can proxy traffic to the monolith without exposing internal services.
 
+When managing the As-Is stand manually on the VPS, use an explicit Compose project name:
+
+```bash
+docker compose -p warmhouse --env-file .env -f docker-compose.prod.yml up -d
+```
+
 ## Required GitHub secrets
 
 - `VPS_HOST`
@@ -148,6 +154,12 @@ The MVP site uses:
 - `deploy/nginx/mvp.yerlan-amantaiuly.kz.conf`
 
 This lets you keep the current monolith demo online while deploying a second site independently.
+
+When managing the MVP stand manually on the VPS, use:
+
+```bash
+docker compose -p warmhouse-mvp -f docker-compose.mvp.yml up -d
+```
 
 ## Recommended firewall
 

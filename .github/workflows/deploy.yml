@@ -95,8 +95,8 @@ jobs:
             mkdir -p "$VPS_APP_DIR/compose" "$VPS_APP_DIR/postgres"
             echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             cd "$VPS_APP_DIR/compose"
-            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml pull
-            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse --env-file .env -f docker-compose.prod.yml pull
+            GHCR_OWNER="$GHCR_OWNER" IMAGE_TAG="$IMAGE_TAG" docker compose -p warmhouse --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
 
       - name: Run smoke checks
         env:
